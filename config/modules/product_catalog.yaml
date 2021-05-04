@@ -1,0 +1,60 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # controllers are imported separately to make sure services can be injected
+    # as action arguments even if you don't extend any base controller class
+    # App\Controller\:
+    #     resource: '../../src/Shopsy/ProductCatalog/Main/Ui/Http/Rest/Controller'
+    #     tags: ['controller.service_arguments']
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+    App\Shopsy\ProductCatalog\Main\Ui\Http\Rest\DataPersister\ProductDataPersister:
+        tags:
+            - { name: api_platform.data_persister }
+
+    App\Shopsy\ProductCatalog\Main\Ui\Http\Rest\DataProvider\ProductCollectionDataProvider:
+        autoconfigure: false
+        tags:
+            - { name: 'api_platform.collection_data_provider', priority: 2 }
+
+    App\Shopsy\ProductCatalog\Main\Infrastructure\Persistence\Doctrine\Product\Projection\DoctrineProductProjection:
+      arguments:
+        $registry: '@doctrine'
+    App\Shopsy\ProductCatalog\Main\Domain\Product\ProductProjection: '@App\Shopsy\ProductCatalog\Main\Infrastructure\Persistence\Doctrine\Product\Projection\DoctrineProductProjection'
+
+    App\Shopsy\ProductCatalog\Main\Infrastructure\Persistence\Doctrine\Product\ProductRepository:
+        arguments:
+            $domainEventStore: '@App\Common\Domain\Event\DomainEventStore'
+            $productProjection: '@App\Shopsy\ProductCatalog\Main\Domain\Product\ProductProjection'
+    App\Shopsy\ProductCatalog\Main\Domain\Product\ProductRepository: '@App\Shopsy\ProductCatalog\Main\Infrastructure\Persistence\Doctrine\Product\ProductRepository'
+
+    App\Shopsy\ProductCatalog\Main\Infrastructure\Persistence\Doctrine\Product\DoctrineProductViewRepository:
+        arguments:
+            $registry: '@doctrine'
+    App\Shopsy\ProductCatalog\Main\Domain\Product\ProductViewRepository: '@App\Shopsy\ProductCatalog\Main\Infrastructure\Persistence\Doctrine\Product\DoctrineProductViewRepository'
+
+    App\Shopsy\ProductCatalog\Main\Application\Command\CreateProductHandler:
+        arguments:
+            $productRepository: '@App\Shopsy\ProductCatalog\Main\Domain\Product\ProductRepository'
+        tags:
+            - { name: messenger.message_handler, bus: command.bus }
+
+    App\Shopsy\ProductCatalog\Main\Application\Query\ProductCollectionQueryHandler:
+        arguments:
+            $productRepository: '@App\Shopsy\ProductCatalog\Main\Domain\Product\ProductViewRepository'
+            $productCollectionDataTransformer: '@App\Shopsy\ProductCatalog\Main\Application\Query\DataTransformer\DtoProductCollectionDataTransformer'
+        tags:
+            - { name: messenger.message_handler, bus: query.bus }
+
+    App\Shopsy\ProductCatalog\Main\Application\Query\DataTransformer\DtoProductCollectionDataTransformer: ~

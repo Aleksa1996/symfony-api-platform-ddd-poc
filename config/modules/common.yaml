@@ -1,0 +1,46 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration
+parameters:
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        public: true
+
+    _instanceof:
+        # all services implementing the CommandHandler
+        # will be registered on the command.bus bus
+        App\Common\Application\Command\CommandHandler:
+            tags:
+                - { name: messenger.message_handler, bus: command.bus }
+
+        # while those implementing QueryHandler will be
+        # registered on the query.bus bus
+        App\Common\Application\Query\QueryHandler:
+            tags:
+                - { name: messenger.message_handler, bus: query.bus }
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+    App\Common\Application\Command\CommandBus:
+        arguments:
+            $messageBus: '@command.bus'
+
+    App\Common\Application\Query\QueryBus:
+        arguments:
+            $messageBus: '@query.bus'
+
+    App\Common\Infrastructure\Persistence\Doctrine\Event\DoctrineDomainEventStore:
+      arguments:
+        $registry: '@doctrine'
+    App\Common\Domain\Event\DomainEventStore: '@App\Common\Infrastructure\Persistence\Doctrine\Event\DoctrineDomainEventStore'
+
+    App\Common\Ui\Http\Rest\Serializer\ApiNormalizer:
+        # By default .inner is passed as argument
+        decorates: 'api_platform.hydra.normalizer.partial_collection_view'
+        arguments: ['@.inner']
