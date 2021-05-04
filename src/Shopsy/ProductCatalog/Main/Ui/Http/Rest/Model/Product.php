@@ -28,6 +28,11 @@ class Product
     #[Assert\NotBlank]
     public string $description = '';
 
+    /**
+     * @param string|null $id
+     * @param string $name
+     * @param string $description
+     */
     public function __construct(?string $id, string $name, string $description)
     {
         $this->id = $id;
